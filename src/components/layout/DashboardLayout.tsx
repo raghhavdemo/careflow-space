@@ -54,6 +54,14 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
+// Define an interface for the navigation links
+interface NavLink {
+  icon: React.ElementType;
+  label: string;
+  to: string;
+  badge?: React.ReactNode;
+}
+
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ userType, children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
@@ -68,14 +76,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ userType, children })
     setIsSidebarOpen(false);
   };
 
-  const patientLinks = [
+  const patientLinks: NavLink[] = [
     { icon: MessageSquare, label: 'Chat', to: '/patient/chat' },
     { icon: Heart, label: 'Saved Doctors', to: '/patient/saved-doctors' },
     { icon: MapPin, label: 'Find Doctors', to: '/patient/find-doctors' },
     { icon: Settings, label: 'Settings', to: '/patient/settings' },
   ];
 
-  const doctorLinks = [
+  const doctorLinks: NavLink[] = [
     { icon: MessageSquare, label: 'Chat', to: '/doctor/chat', badge: <Badge variant="healthcare" className="text-[10px] py-0">2</Badge> },
     { icon: Brain, label: 'Symptom Checker', to: '/doctor/symptom-checker' },
     { icon: UserPlus, label: 'Add Patient', to: '/doctor/add-patient' },
