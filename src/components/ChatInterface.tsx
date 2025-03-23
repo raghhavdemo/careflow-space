@@ -4,14 +4,41 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send, Plus, Paperclip } from 'lucide-react';
+import { 
+  Send, 
+  Plus, 
+  Paperclip, 
+  Image, 
+  FileText, 
+  Smile, 
+  ThumbsUp, 
+  Heart, 
+  Clock 
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipProvider, 
+  TooltipTrigger 
+} from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+type MessageReaction = 'like' | 'love' | null;
 
 type MessageType = {
   id: string;
   content: string;
   timestamp: Date;
   sender: 'user' | 'bot';
+  attachment?: {
+    type: 'image' | 'document';
+    name: string;
+    url: string;
+  };
+  reaction?: MessageReaction;
 };
 
 interface ChatInterfaceProps {
@@ -32,8 +59,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userType }) => {
   
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [attachmentType, setAttachmentType] = useState<'image' | 'document' | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     scrollToBottom();
@@ -50,12 +81,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userType }) => {
       id: Date.now().toString(),
       content: inputValue,
       timestamp: new Date(),
-      sender: 'user'
+      sender: 'user',
+      attachment: attachmentType ? {
+        type: attachmentType,
+        name: `${attachmentType}-${Date.now()}.${attachmentType === 'image' ? 'jpg' : 'pdf'}`,
+        url: `https://placeholder.com/${attachmentType === 'image' ? '150' : 'document'}`,
+      } : undefined
     };
     
     setMessages(prev => [...prev, newMessage]);
     setInputValue('');
     setIsTyping(true);
+    setAttachmentType(null);
+    setIsExpanded(false);
     
     // Simulate a response after a delay
     setTimeout(() => {
@@ -68,6 +106,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userType }) => {
       
       setMessages(prev => [...prev, responseMessage]);
       setIsTyping(false);
+      
+      toast({
+        title: "New message",
+        description: "You've received a new message",
+      });
     }, 1500);
   };
 
@@ -83,11 +126,33 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userType }) => {
     return responses[Math.floor(Math.random() * responses.length)];
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  const handleAttachment = (type: 'image' | 'document') => {
+    setAttachmentType(type);
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+    
+    toast({
+      title: `${type === 'image' ? 'Image' : 'Document'} selected`,
+      description: "Your attachment is ready to send",
+    });
+  };
+  
+  const handleReaction = (messageId: string, reaction: MessageReaction) => {
+    setMessages(prev => 
+      prev.map(message => 
+        message.id === messageId
+          ? { ...message, reaction: message.reaction === reaction ? null : reaction }
+          : message
+      )
+    );
   };
 
   const formatTime = (date: Date): string => {
@@ -113,6 +178,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userType }) => {
             </p>
           </div>
         </div>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" className="rounded-full">
+                <Clock className="h-4 w-4 mr-1" />
+                <span className="text-xs">History</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>View conversation history</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
@@ -131,19 +210,54 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userType }) => {
               >
                 <div 
                   className={cn(
-                    "max-w-[80%] rounded-2xl px-4 py-2 break-words",
+                    "max-w-[80%] rounded-2xl px-4 py-2 break-words relative group",
                     message.sender === 'user' 
                       ? "bg-healthcare-600 text-white rounded-tr-none" 
                       : "bg-white border border-gray-200 text-gray-800 rounded-tl-none"
                   )}
                 >
-                  <p>{message.content}</p>
-                  <p className={cn(
-                    "text-xs mt-1",
+                  <p className="whitespace-pre-line">{message.content}</p>
+                  
+                  {message.attachment && (
+                    <div className="mt-2 p-2 rounded-lg bg-black/5 flex items-center gap-2 text-sm">
+                      {message.attachment.type === 'image' ? (
+                        <Image className="h-4 w-4" />
+                      ) : (
+                        <FileText className="h-4 w-4" />
+                      )}
+                      <span>{message.attachment.name}</span>
+                    </div>
+                  )}
+                  
+                  <div className={cn(
+                    "flex justify-between items-center mt-1",
                     message.sender === 'user' ? "text-healthcare-100" : "text-gray-400"
                   )}>
-                    {formatTime(message.timestamp)}
-                  </p>
+                    <span className="text-xs">{formatTime(message.timestamp)}</span>
+                    
+                    {message.sender === 'bot' && (
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 ml-2">
+                        <button 
+                          onClick={() => handleReaction(message.id, 'like')}
+                          className={cn(
+                            "p-1 rounded-full hover:bg-gray-100 transition-colors",
+                            message.reaction === 'like' ? "text-blue-500" : "text-gray-400"
+                          )}
+                        >
+                          <ThumbsUp className="h-3 w-3" />
+                        </button>
+                        <button 
+                          onClick={() => handleReaction(message.id, 'love')}
+                          className={cn(
+                            "p-1 rounded-full hover:bg-gray-100 transition-colors",
+                            message.reaction === 'love' ? "text-red-500" : "text-gray-400"
+                          )}
+                        >
+                          <Heart className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -170,34 +284,132 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userType }) => {
       </div>
       
       <div className="p-4 border-t border-gray-100">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="rounded-full">
-            <Plus className="h-4 w-4" />
-          </Button>
-          
-          <Button variant="outline" size="icon" className="rounded-full">
-            <Paperclip className="h-4 w-4" />
-          </Button>
-          
-          <div className="flex-1 relative">
-            <Input
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type your message..."
-              className="pr-12 bg-gray-50 rounded-full focus-visible:ring-healthcare-500"
-            />
+        {isExpanded ? (
+          <Tabs defaultValue="message" className="mb-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="message">Message</TabsTrigger>
+              <TabsTrigger value="attachments">Attachments</TabsTrigger>
+            </TabsList>
+            <TabsContent value="message">
+              <Textarea
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type your message..."
+                className="min-h-[100px] bg-gray-50 rounded-lg focus-visible:ring-healthcare-500 resize-none"
+              />
+            </TabsContent>
+            <TabsContent value="attachments">
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  onClick={() => handleAttachment('image')}
+                  className="p-4 border border-dashed border-gray-200 rounded-lg hover:bg-gray-50 transition-colors flex flex-col items-center justify-center gap-2"
+                >
+                  <Image className="h-8 w-8 text-gray-400" />
+                  <span className="text-sm text-gray-600">Image</span>
+                </button>
+                <button 
+                  onClick={() => handleAttachment('document')}
+                  className="p-4 border border-dashed border-gray-200 rounded-lg hover:bg-gray-50 transition-colors flex flex-col items-center justify-center gap-2"
+                >
+                  <FileText className="h-8 w-8 text-gray-400" />
+                  <span className="text-sm text-gray-600">Document</span>
+                </button>
+              </div>
+              <input 
+                type="file" 
+                ref={fileInputRef}
+                className="hidden"
+                accept={attachmentType === 'image' ? 'image/*' : 'application/pdf'}
+              />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="rounded-full"
+                    onClick={() => setIsExpanded(true)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Expand editor</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="rounded-full"
+                    onClick={() => handleAttachment('image')}
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Add attachment</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <div className="flex-1 relative">
+              <Input
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder="Type your message..."
+                className="pr-12 bg-gray-50 rounded-full focus-visible:ring-healthcare-500"
+              />
+              
+              <Button 
+                size="icon" 
+                className="absolute right-1 top-1 rounded-full h-8 w-8 p-0 bg-healthcare-500 hover:bg-healthcare-600"
+                onClick={handleSendMessage}
+                disabled={inputValue.trim() === ''}
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {isExpanded && (
+          <div className="flex justify-between items-center mt-3">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setIsExpanded(false)}
+              className="text-gray-500"
+            >
+              Cancel
+            </Button>
             
             <Button 
-              size="icon" 
-              className="absolute right-1 top-1 rounded-full h-8 w-8 p-0 bg-healthcare-500 hover:bg-healthcare-600"
+              size="sm" 
+              className="bg-healthcare-500 hover:bg-healthcare-600"
               onClick={handleSendMessage}
               disabled={inputValue.trim() === ''}
             >
-              <Send className="h-4 w-4" />
+              <Send className="h-4 w-4 mr-1" />
+              Send
             </Button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
