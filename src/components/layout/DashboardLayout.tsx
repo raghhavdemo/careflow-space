@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Outlet, useNavigate, Link } from 'react-router-dom';
+import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import Logo from '../ui-components/Logo';
 import { 
   Settings, 
@@ -12,10 +12,13 @@ import {
   MessageSquare, 
   UserPlus, 
   MapPin, 
-  Heart 
+  Heart,
+  Brain,
+  BellRing
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 
 interface SidebarLinkProps {
   icon: React.ElementType;
@@ -23,21 +26,25 @@ interface SidebarLinkProps {
   to: string;
   isActive?: boolean;
   onClick?: () => void;
+  badge?: React.ReactNode;
 }
 
-const SidebarLink: React.FC<SidebarLinkProps> = ({ icon: Icon, label, to, isActive, onClick }) => {
+const SidebarLink: React.FC<SidebarLinkProps> = ({ icon: Icon, label, to, isActive, onClick, badge }) => {
   return (
     <Link 
       to={to}
       onClick={onClick}
-      className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group ${
+      className={`flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-200 group ${
         isActive 
         ? 'bg-healthcare-100 text-healthcare-700' 
         : 'text-gray-600 hover:bg-healthcare-50 hover:text-healthcare-600'
       }`}
     >
-      <Icon className={`h-5 w-5 ${isActive ? 'text-healthcare-600' : 'text-gray-500 group-hover:text-healthcare-500'}`} />
-      <span>{label}</span>
+      <div className="flex items-center gap-3">
+        <Icon className={`h-5 w-5 ${isActive ? 'text-healthcare-600' : 'text-gray-500 group-hover:text-healthcare-500'}`} />
+        <span>{label}</span>
+      </div>
+      {badge}
     </Link>
   );
 };
@@ -50,6 +57,7 @@ interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ userType, children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     // In a real app, you would add proper logout logic here
@@ -68,7 +76,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ userType, children })
   ];
 
   const doctorLinks = [
-    { icon: MessageSquare, label: 'Chat', to: '/doctor/chat' },
+    { icon: MessageSquare, label: 'Chat', to: '/doctor/chat', badge: <Badge variant="healthcare" className="text-[10px] py-0">2</Badge> },
+    { icon: Brain, label: 'Symptom Checker', to: '/doctor/symptom-checker' },
     { icon: UserPlus, label: 'Add Patient', to: '/doctor/add-patient' },
     { icon: Settings, label: 'Settings', to: '/doctor/settings' },
   ];
@@ -93,7 +102,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ userType, children })
             <Logo />
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="relative">
+              <BellRing className="h-5 w-5 text-gray-600" />
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-healthcare-600"></span>
+            </Button>
             <Avatar className="h-9 w-9 border-2 border-healthcare-100">
               <AvatarImage src="" />
               <AvatarFallback className="bg-healthcare-100 text-healthcare-700">
@@ -119,6 +132,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ userType, children })
                     icon={link.icon}
                     label={link.label}
                     to={link.to}
+                    isActive={location.pathname === link.to}
+                    badge={link.badge}
                   />
                 ))}
               </nav>
@@ -175,7 +190,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ userType, children })
                           icon={link.icon}
                           label={link.label}
                           to={link.to}
+                          isActive={location.pathname === link.to}
                           onClick={closeSidebar}
+                          badge={link.badge}
                         />
                       ))}
                     </nav>

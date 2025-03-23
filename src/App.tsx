@@ -21,6 +21,7 @@ import PatientSettings from "./pages/patient/PatientSettings";
 import DoctorChat from "./pages/doctor/DoctorChat";
 import AddPatient from "./pages/doctor/AddPatient";
 import DoctorSettings from "./pages/doctor/DoctorSettings";
+import SymptomChecker from "./pages/doctor/SymptomChecker";
 
 import NotFound from "./pages/NotFound";
 
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/doctor/chat" element={<DoctorChat />} />
             <Route path="/doctor/add-patient" element={<AddPatient />} />
             <Route path="/doctor/settings" element={<DoctorSettings />} />
+            <Route path="/doctor/symptom-checker" element={<SymptomChecker />} />
             
             {/* Catch-all route for 404 */}
             <Route path="*" element={<NotFound />} />
